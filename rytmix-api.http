@@ -1,0 +1,7 @@
+@rytmix_api_HostAddress = http://localhost:5139
+
+# Liveness/keep-alive probe — returns 200, no DB access.
+GET {{rytmix_api_HostAddress}}/health
+Accept: application/json
+
+###

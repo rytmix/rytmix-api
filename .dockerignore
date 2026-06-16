@@ -1,0 +1,18 @@
+# Keep the Docker build context small and free of host build output / secrets.
+**/bin/
+**/obj/
+**/.git/
+**/.gitignore
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+
+# Local-only, secret-bearing config must never enter the image.
+**/appsettings.Development.json
+
+# Not needed at runtime.
+Dockerfile
+.dockerignore
+**/*.md
+**/Properties/launchSettings.json
