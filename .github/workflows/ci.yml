@@ -1,0 +1,45 @@
+name: CI
+
+# Continuous Integration: verify the API builds (and that tests pass) on every
+# pull request into main, and on pushes to the long-lived branches.
+#
+# Note: this does NOT deploy. Deployment is handled separately by Render, which
+# watches the repo and builds the Dockerfile itself when main changes.
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --no-restore -c Release
+
+      - name: Test
+        shell: bash
+        run: |
+          # Run tests only if a test project exists yet. None do in Phase 0,
+          # so this step passes cleanly now and starts running tests
+          # automatically once they're added alongside features.
+          test_projects=$(find . -name '*[Tt]ests.csproj')
+          if [ -n "$test_projects" ]; then
+            dotnet test -c Release --verbosity normal
+          else
+            echo "No test projects found yet — skipping tests (added with features)."
+          fi

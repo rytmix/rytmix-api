@@ -427,3 +427,11 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ---------------------------------------------------------------------------
+# Rytmix: keep secret-bearing local config out of git.
+# Real secrets (DB connection string, Jamendo client ID, JWT key) live only in
+# env vars / user-secrets — never committed. See CLAUDE.md.
+# ---------------------------------------------------------------------------
+appsettings.Development.json
+appsettings.*.Local.json
