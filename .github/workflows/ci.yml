@@ -1,15 +1,14 @@
 name: CI
 
 # Continuous Integration: verify the API builds (and that tests pass) on every
-# pull request into main, and on pushes to the long-lived branches.
+# pull request, and on pushes to the long-lived branches.
 #
 # Note: this does NOT deploy. Deployment is handled separately by Render, which
 # watches the repo and builds the Dockerfile itself when main changes.
 on:
   push:
     branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+  pull_request: # every PR — no branch filter, so it can't drift out of sync with the branch rules
 
 jobs:
   build:
