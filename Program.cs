@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ---------------------------------------------------------------------------
 
 // MVC controllers. The actual endpoints (Tracks, Playlists, Favorites, Auth)
-// live under Controllers/ and are added from Phase 1 onward.
+// live under Controllers/ and are added later (none yet).
 builder.Services.AddControllers();
 
 // OpenAPI document — exposed in Development only (see pipeline below). Handy
@@ -21,15 +21,15 @@ builder.Services.AddOpenApi();
 //   - locally: put it in appsettings.Development.json (gitignored) or user-secrets
 //   - on Render: set the env var ConnectionStrings__DefaultConnection
 // Registering the context here is safe even with no connection string yet —
-// nothing resolves it during Phase 0 (the /health endpoint never touches the DB).
+// nothing resolves it yet (the /health endpoint never touches the DB).
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// CORS — the frontend (Vercel/localhost) and this API are different origins,
+// CORS — the frontend (Cloudflare Pages/localhost) and this API are different origins,
 // so the browser requires the API to opt the frontend origin in. Origins are
 // read from config ("Cors:AllowedOrigins"), so they are configurable per
-// environment (e.g. localhost in dev, the Vercel URL in prod, and later the
+// environment (e.g. localhost in dev, the Cloudflare Pages URL in prod, and later the
 // Tauri desktop origin) without code changes.
 const string FrontendCorsPolicy = "FrontendCors";
 var allowedOrigins = builder.Configuration

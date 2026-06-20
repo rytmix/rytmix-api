@@ -6,7 +6,7 @@ API, and persists user data (accounts, playlists, favorites) in PostgreSQL via E
 
 This is one of two repositories:
 - **`rytmix-api`** (this repo) — ASP.NET Core backend, deployed to Render via Docker.
-- **`rytmix-web`** — Next.js frontend (+ Tauri desktop wrapper), deployed to Vercel.
+- **`rytmix-web`** — Next.js frontend (+ Tauri desktop wrapper), deployed to Cloudflare Pages.
 
 ## Tech stack
 
@@ -16,7 +16,7 @@ This is one of two repositories:
 | Language | C# |
 | Data access | EF Core with the Npgsql provider |
 | Database | PostgreSQL (Supabase) |
-| Auth *(Phase 2)* | ASP.NET Core Identity + JWT |
+| Auth *(planned)* | ASP.NET Core Identity + JWT |
 | Containerization | Docker (multi-stage build) |
 | Hosting | Render (free tier) |
 
@@ -24,8 +24,8 @@ This is one of two repositories:
 
 ```
 rytmix-api/
-├── Controllers/          # HTTP endpoints (added from Phase 1)
-├── Models/               # Entities + DTOs (added from Phase 2)
+├── Controllers/          # HTTP endpoints (planned; none yet)
+├── Models/               # Entities + DTOs (planned; none yet)
 ├── Data/
 │   └── AppDbContext.cs   # EF Core DbContext (Npgsql); no entities yet
 ├── Program.cs            # DI + middleware: controllers, /health, CORS, DbContext
@@ -53,7 +53,7 @@ curl http://localhost:5139/health
 ```
 
 No database is required to run locally — `/health` does not touch the DB, and nothing
-resolves the `DbContext` until the Phase 2 data work.
+resolves the `DbContext` until the data-layer work (accounts/persistence) is added.
 
 ## Configuration
 
@@ -64,7 +64,7 @@ double underscore (`ConnectionStrings:DefaultConnection` → `ConnectionStrings_
 | Key | Env var | Purpose |
 |---|---|---|
 | `ConnectionStrings:DefaultConnection` | `ConnectionStrings__DefaultConnection` | Npgsql connection string for Postgres |
-| `Jamendo:ClientId` | `Jamendo__ClientId` | Jamendo API client ID (proxied server-side, *Phase 1*) |
+| `Jamendo:ClientId` | `Jamendo__ClientId` | Jamendo API client ID (proxied server-side, *planned*) |
 | `Cors:AllowedOrigins` | `Cors__AllowedOrigins__0`, … | Allowed frontend origins (array) |
 
 > **Never commit secrets.** Keep connection strings and API keys in `appsettings.Development.json`
@@ -106,9 +106,9 @@ every PR into `main` and gates Render deploys.
 | Method | Path | Status |
 |---|---|---|
 | GET | `/health` | ✅ Live |
-| GET | `/api/tracks/search?q=...` | 🔜 Phase 1 (Jamendo proxy) |
-| POST | `/api/auth/register`, `/api/auth/login` | 🔜 Phase 2 |
-| — | `/api/playlists`, `/api/favorites` | 🔜 Phase 2 (JWT-protected) |
+| GET | `/api/tracks/search?q=...` | 🔜 Planned (Jamendo proxy) |
+| POST | `/api/auth/register`, `/api/auth/login` | 🔜 Planned |
+| — | `/api/playlists`, `/api/favorites` | 🔜 Planned (JWT-protected) |
 
 ## Contributing
 
