@@ -34,7 +34,7 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          # Run tests only if a test project exists yet. None do in Phase 0,
+          # Run tests only if a test project exists yet. None do currently,
           # so this step passes cleanly now and starts running tests
           # automatically once they're added alongside features.
           test_projects=$(find . -name '*[Tt]ests.csproj')
