@@ -7,9 +7,9 @@ namespace rytmix_api.Data;
 /// <c>Program.cs</c> (the connection string comes from configuration, never
 /// hardcoded).
 ///
-/// This is the Phase 0 skeleton, so it intentionally holds no entity sets yet.
+/// This is the initial skeleton, so it intentionally holds no entity sets yet.
 /// The entities (User, Playlist, Track, Favorite) and their <see cref="DbSet{TEntity}"/>
-/// properties — plus the first EF Core migration — are added in Phase 2.
+/// properties — plus the first EF Core migration — are added later (accounts + persistence).
 /// </summary>
 public class AppDbContext : DbContext
 {
@@ -18,5 +18,5 @@ public class AppDbContext : DbContext
     {
     }
 
-    // DbSet<...> properties will be added in Phase 2 (accounts + persistence).
+    // DbSet<...> properties will be added later (accounts + persistence).
 }
