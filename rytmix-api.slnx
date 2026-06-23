@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="rytmix-api.csproj" />
+  <Project Path="rytmix-api.Tests/rytmix-api.Tests.csproj" />
+</Solution>

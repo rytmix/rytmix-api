@@ -5,10 +5,19 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>rytmix_api</RootNamespace>
+    <!-- The test project lives in a subfolder of this project's root, so exclude
+         it from this (Web SDK) project's default file globs — otherwise the test
+         .cs files would be compiled into the API assembly too. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);rytmix-api.Tests\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <!-- Pin EF Core to one version so the package graph agrees: Npgsql 10.0.2
+         pulls EF Core 10.0.4 transitively while EF Core Design is 10.0.9. Pinning
+         here unifies everything to 10.0.9 and clears the MSB3277 version-conflict
+         warning surfaced by the test project. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
