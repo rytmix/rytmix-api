@@ -1,0 +1,166 @@
+name: Project board automation
+
+# Moves a ticket across the "Rytmix" org board as its pull request progresses:
+#
+#   PR opened / marked ready        -> In review
+#   PR merged into develop          -> Merged to develop
+#   develop -> main PR merged        -> this repo's "Merged to develop" tickets
+#                                       move to "Deployed to prod"
+#
+# Backlog -> Ready and Deployed to prod -> Done stay MANUAL (human judgement).
+#
+# A ticket is matched to its PR via the PR's closing keywords ("Closes #N",
+# "Fixes #N", ...). We read GitHub's parsed `closingIssuesReferences` rather
+# than scraping the body, so it always matches what GitHub itself links.
+#
+# Requires the org secret PROJECTS_TOKEN — a fine-grained PAT with
+# "Organization > Projects: read & write" (+ this repo's Issues/PRs: read).
+# The built-in GITHUB_TOKEN cannot write to an organisation-level Project,
+# which is the whole reason this secret exists.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+# The default token is barely used (the PAT does the real work), so keep it minimal.
+permissions:
+  contents: read
+
+jobs:
+  sync-board:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          script: |
+            const PROJECT_NUMBER = 2;            // the "Rytmix" org board
+            const org  = context.repo.owner;     // "rytmix"
+            const repo = context.repo.repo;      // "rytmix-api" or "rytmix-web"
+            const pr   = context.payload.pull_request;
+            const action = context.payload.action;
+
+            // Columns in order. We only ever move a ticket FORWARD, so a stray
+            // event can never drag a ticket back to an earlier stage.
+            const ORDER = ['Backlog', 'Ready', 'In progress', 'In review',
+                           'Merged to develop', 'Deployed to prod', 'Done'];
+
+            // 1) Resolve the board id, the Status field id, and each option id.
+            //    Done by name at runtime so the workflow survives id changes.
+            const meta = await github.graphql(`
+              query($org: String!, $number: Int!) {
+                organization(login: $org) {
+                  projectV2(number: $number) {
+                    id
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField { id options { id name } }
+                    }
+                  }
+                }
+              }`, { org, number: PROJECT_NUMBER });
+
+            const project = meta.organization.projectV2;
+            const statusFieldId = project.field.id;
+            const optionId = Object.fromEntries(
+              project.field.options.map(o => [o.name, o.id]));
+
+            // Set one board item's Status — but only when it's a forward move.
+            async function advance(itemId, currentName, targetName) {
+              if (ORDER.indexOf(currentName) >= ORDER.indexOf(targetName)) {
+                console.log(`skip: "${currentName}" -> "${targetName}" is not a forward move`);
+                return;
+              }
+              await github.graphql(`
+                mutation($p: ID!, $i: ID!, $f: ID!, $o: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $p, itemId: $i, fieldId: $f,
+                    value: { singleSelectOptionId: $o }
+                  }) { projectV2Item { id } }
+                }`, { p: project.id, i: itemId, f: statusFieldId, o: optionId[targetName] });
+              console.log(`moved "${currentName}" -> "${targetName}"`);
+            }
+
+            // Move every ticket this PR closes to the target column.
+            async function moveClosingIssues(targetName) {
+              const res = await github.graphql(`
+                query($owner: String!, $repo: String!, $num: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $num) {
+                      closingIssuesReferences(first: 20) {
+                        nodes {
+                          number
+                          projectItems(first: 10) {
+                            nodes {
+                              id
+                              project { id }
+                              fieldValueByName(name: "Status") {
+                                ... on ProjectV2ItemFieldSingleSelectValue { name }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`, { owner: org, repo, num: pr.number });
+
+              const issues = res.repository.pullRequest.closingIssuesReferences.nodes;
+              if (issues.length === 0) { console.log('PR closes no issues — nothing to do.'); return; }
+              for (const issue of issues) {
+                const item = issue.projectItems.nodes.find(it => it.project.id === project.id);
+                if (!item) { console.log(`#${issue.number} is not on the board — skipped.`); continue; }
+                const current = item.fieldValueByName ? item.fieldValueByName.name : 'Backlog';
+                await advance(item.id, current, targetName);
+              }
+            }
+
+            // On a develop -> main merge, ship THIS repo's integrated tickets.
+            // Deploys are per-repo (api -> Render, web -> Cloudflare, each from
+            // its own main), so we only touch items belonging to this repo.
+            async function deployThisRepo() {
+              let cursor = null;
+              do {
+                const page = await github.graphql(`
+                  query($p: ID!, $c: String) {
+                    node(id: $p) {
+                      ... on ProjectV2 {
+                        items(first: 100, after: $c) {
+                          pageInfo { hasNextPage endCursor }
+                          nodes {
+                            id
+                            content {
+                              ... on Issue { repository { name } }
+                              ... on PullRequest { repository { name } }
+                            }
+                            fieldValueByName(name: "Status") {
+                              ... on ProjectV2ItemFieldSingleSelectValue { name }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }`, { p: project.id, c: cursor });
+
+                const items = page.node.items;
+                for (const it of items.nodes) {
+                  const status = it.fieldValueByName ? it.fieldValueByName.name : null;
+                  const itemRepo = it.content && it.content.repository ? it.content.repository.name : null;
+                  if (status === 'Merged to develop' && itemRepo === repo) {
+                    await advance(it.id, status, 'Deployed to prod');
+                  }
+                }
+                cursor = items.pageInfo.hasNextPage ? items.pageInfo.endCursor : null;
+              } while (cursor);
+            }
+
+            // Dispatch based on what happened to the PR.
+            if (['opened', 'reopened', 'ready_for_review'].includes(action)) {
+              if (pr.draft) { console.log('Draft PR — skipping.'); return; }
+              await moveClosingIssues('In review');
+            } else if (action === 'closed' && pr.merged) {
+              if (pr.base.ref === 'develop') {
+                await moveClosingIssues('Merged to develop');
+              } else if (pr.base.ref === 'main' && pr.head.ref === 'develop') {
+                await deployThisRepo();
+              }
+            }
