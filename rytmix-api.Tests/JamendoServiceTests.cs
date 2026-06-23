@@ -38,6 +38,17 @@ public class JamendoServiceTests
     { "headers": { "status": "failed", "error_message": "Your credential is not valid." }, "results": [] }
     """;
 
+    // Two results: one fully playable, one missing its audio url (unplayable).
+    private const string MixedValidityJson = """
+    {
+      "headers": { "status": "success", "results_count": 2 },
+      "results": [
+        { "id": "111", "name": "Playable", "artist_name": "Artist A", "duration": 100, "album_image": "https://img/a.jpg", "audio": "https://audio/a.mp3" },
+        { "id": "222", "name": "No audio",  "artist_name": "Artist B", "duration": 90,  "album_image": "https://img/b.jpg", "audio": "" }
+      ]
+    }
+    """;
+
     private static JamendoService CreateService(FakeHttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler)
@@ -122,5 +133,18 @@ public class JamendoServiceTests
 
         await Assert.ThrowsAsync<JamendoServiceException>(
             () => service.SearchTracksAsync("anything"));
+    }
+
+    [Fact]
+    public async Task SearchTracksAsync_FiltersOutTracksMissingIdOrAudio()
+    {
+        var handler = new FakeHttpMessageHandler(MixedValidityJson);
+        var service = CreateService(handler);
+
+        var results = await service.SearchTracksAsync("mix");
+
+        // The track with an empty audio url is dropped; only the playable one remains.
+        var track = Assert.Single(results);
+        Assert.Equal("111", track.Id);
     }
 }

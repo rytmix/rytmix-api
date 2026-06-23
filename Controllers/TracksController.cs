@@ -46,9 +46,13 @@ public class TracksController : ControllerBase
             var tracks = await _jamendo.SearchTracksAsync(q, cancellationToken);
             return Ok(tracks);
         }
-        catch (JamendoServiceException ex)
+        catch (JamendoServiceException)
         {
-            return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
+            // JamendoService already logged the underlying cause. Return a fixed,
+            // client-safe message rather than leaking internal/upstream detail.
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new { error = "The music service is temporarily unavailable. Please try again later." });
         }
     }
 }

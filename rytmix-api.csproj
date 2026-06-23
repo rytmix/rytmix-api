@@ -8,7 +8,7 @@
     <!-- The test project lives in a subfolder of this project's root, so exclude
          it from this (Web SDK) project's default file globs — otherwise the test
          .cs files would be compiled into the API assembly too. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);rytmix-api.Tests\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);rytmix-api.Tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

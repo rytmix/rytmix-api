@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using rytmix_api.Controllers;
 using rytmix_api.Models;
@@ -16,11 +17,16 @@ public class TracksControllerTests
     {
         public int CallCount { get; private set; }
         public IReadOnlyList<TrackDto> ToReturn { get; init; } = [];
+        public Exception? ToThrow { get; init; }
 
         public Task<IReadOnlyList<TrackDto>> SearchTracksAsync(
             string query, CancellationToken cancellationToken = default)
         {
             CallCount++;
+            if (ToThrow is not null)
+            {
+                throw ToThrow;
+            }
             return Task.FromResult(ToReturn);
         }
     }
@@ -52,6 +58,22 @@ public class TracksControllerTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var tracks = Assert.IsAssignableFrom<IReadOnlyList<TrackDto>>(ok.Value);
         Assert.Single(tracks);
+        Assert.Equal(1, stub.CallCount);
+    }
+
+    [Fact]
+    public async Task Search_ServiceThrowsJamendoException_Returns502BadGateway()
+    {
+        var stub = new StubJamendoService
+        {
+            ToThrow = new JamendoServiceException("upstream boom"),
+        };
+        var controller = new TracksController(stub);
+
+        var result = await controller.Search("hello", CancellationToken.None);
+
+        var objectResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status502BadGateway, objectResult.StatusCode);
         Assert.Equal(1, stub.CallCount);
     }
 }

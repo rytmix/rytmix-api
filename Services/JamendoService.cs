@@ -14,6 +14,10 @@ namespace rytmix_api.Services;
 /// </summary>
 public sealed class JamendoService : IJamendoService
 {
+    // Jamendo returns 10 results by default; we request a fuller first page.
+    // Pagination is out of scope for P1-1, so this stays a fixed page size.
+    private const int SearchResultLimit = 20;
+
     private readonly HttpClient _httpClient;
     private readonly JamendoOptions _options;
     private readonly ILogger<JamendoService> _logger;
@@ -45,7 +49,7 @@ public sealed class JamendoService : IJamendoService
         {
             ["client_id"] = _options.ClientId,
             ["format"] = "json",
-            ["limit"] = "20",
+            ["limit"] = SearchResultLimit.ToString(),
             ["search"] = query,
         });
 
@@ -78,7 +82,12 @@ public sealed class JamendoService : IJamendoService
             return [];
         }
 
-        return payload.Results.Select(MapToDto).ToList();
+        // Only return usable tracks: one with no id can't be fetched later, and
+        // one with no audio url can't be played — drop those before mapping.
+        return payload.Results
+            .Where(track => !string.IsNullOrEmpty(track.Id) && !string.IsNullOrEmpty(track.Audio))
+            .Select(MapToDto)
+            .ToList();
     }
 
     /// <summary>Maps one Jamendo track onto our DTO, defaulting any missing field.</summary>

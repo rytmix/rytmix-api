@@ -37,7 +37,14 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // user-secrets; on Render from the env var Jamendo__ClientId. Never committed.
 builder.Services
     .AddOptions<JamendoOptions>()
-    .Bind(builder.Configuration.GetSection(JamendoOptions.SectionName));
+    .Bind(builder.Configuration.GetSection(JamendoOptions.SectionName))
+    // Fail fast at startup on misconfiguration (e.g. a missing Jamendo__ClientId
+    // on Render) instead of letting it surface as a 502 on the first search.
+    .Validate(o => !string.IsNullOrWhiteSpace(o.ClientId),
+        "Jamendo:ClientId is required (set Jamendo__ClientId in the environment).")
+    .Validate(o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
+        "Jamendo:BaseUrl must be an absolute URI.")
+    .ValidateOnStart();
 
 // Typed HttpClient (via IHttpClientFactory) for the Jamendo gateway. Pooled and
 // reused, so we avoid socket exhaustion from new-ing up HttpClient per request.
