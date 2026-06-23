@@ -12,7 +12,12 @@ reviews:
   auto_review:
     enabled: true                 # review every PR automatically
     drafts: false                 # skip draft PRs until marked ready
-    base_branches:                # also review PRs targeting these (main is always included)
+    # The repo's default branch is auto-reviewed implicitly; this list adds the
+    # others. We list BOTH so reviews keep working regardless of which is the
+    # current default: develop is default now (Phase 1–3), and we flip back to
+    # main at launch — listing both means no edit needed when that happens.
+    base_branches:
+      - "main"
       - "develop"
 
   # File-targeted review guidance (applies only to matching paths)
