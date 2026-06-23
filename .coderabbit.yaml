@@ -1,0 +1,25 @@
+# CodeRabbit configuration for rytmix-api (ASP.NET Core + EF Core + C#)
+# Docs: https://docs.coderabbit.ai/reference/configuration
+language: en-US
+
+reviews:
+  profile: chill                  # fewer nitpicks, focus on real issues
+  request_changes_workflow: false # comments only; humans still approve/merge
+  high_level_summary: true        # plain-English summary at the top of each PR
+  poem: false                     # disable the signature poem
+  review_status: true             # post what was reviewed / skipped
+
+  auto_review:
+    enabled: true                 # review every PR automatically
+    drafts: false                 # skip draft PRs until marked ready
+
+  # File-targeted review guidance (applies only to matching paths)
+  path_instructions:
+    - path: "**/*.cs"
+      instructions: >-
+        Flag async/await misuse, EF Core N+1 queries, and any hardcoded
+        secrets (JWT signing keys, DB connection strings, the Jamendo
+        client ID). Prefer correctness and security issues over style.
+
+chat:
+  auto_reply: true                # respond automatically in comment threads
