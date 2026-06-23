@@ -12,6 +12,8 @@ reviews:
   auto_review:
     enabled: true                 # review every PR automatically
     drafts: false                 # skip draft PRs until marked ready
+    base_branches:                # also review PRs targeting these (main is always included)
+      - "develop"
 
   # File-targeted review guidance (applies only to matching paths)
   path_instructions:
