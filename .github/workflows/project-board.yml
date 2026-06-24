@@ -66,7 +66,18 @@ jobs:
 
             // Set one board item's Status — but only when it's a forward move.
             async function advance(itemId, currentName, targetName) {
-              if (ORDER.indexOf(currentName) >= ORDER.indexOf(targetName)) {
+              const currentIndex = ORDER.indexOf(currentName);
+              const targetIndex = ORDER.indexOf(targetName);
+
+              if (currentIndex === -1) {
+                console.log(`skip: unknown current status "${currentName}"`);
+                return;
+              }
+              if (targetIndex === -1 || !optionId[targetName]) {
+                throw new Error(`Unknown target status "${targetName}"`);
+              }
+
+              if (currentIndex >= targetIndex) {
                 console.log(`skip: "${currentName}" -> "${targetName}" is not a forward move`);
                 return;
               }
@@ -160,7 +171,11 @@ jobs:
             } else if (action === 'closed' && pr.merged) {
               if (pr.base.ref === 'develop') {
                 await moveClosingIssues('Merged to develop');
-              } else if (pr.base.ref === 'main' && pr.head.ref === 'develop') {
+              } else if (
+                pr.base.ref === 'main' &&
+                pr.head.ref === 'develop' &&
+                pr.head.repo?.full_name === pr.base.repo?.full_name
+              ) {
                 await deployThisRepo();
               }
             }
