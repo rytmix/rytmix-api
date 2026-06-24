@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using rytmix_api.Data;
+using rytmix_api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,33 @@ builder.Services.AddOpenApi();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+// Jamendo proxy. The frontend never calls Jamendo directly — it calls our
+// /api/tracks/* endpoints, which forward to Jamendo with the secret client id
+// added server-side (hides the key, avoids CORS).
+//
+// JamendoOptions is bound from the "Jamendo" config section. The client id is a
+// secret: locally it comes from appsettings.Development.json (gitignored) or
+// user-secrets; on Render from the env var Jamendo__ClientId. Never committed.
+builder.Services
+    .AddOptions<JamendoOptions>()
+    .Bind(builder.Configuration.GetSection(JamendoOptions.SectionName))
+    // Fail fast at startup on misconfiguration (e.g. a missing Jamendo__ClientId
+    // on Render) instead of letting it surface as a 502 on the first search.
+    .Validate(o => !string.IsNullOrWhiteSpace(o.ClientId),
+        "Jamendo:ClientId is required (set Jamendo__ClientId in the environment).")
+    .Validate(o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
+        "Jamendo:BaseUrl must be an absolute URI.")
+    .ValidateOnStart();
+
+// Typed HttpClient (via IHttpClientFactory) for the Jamendo gateway. Pooled and
+// reused, so we avoid socket exhaustion from new-ing up HttpClient per request.
+builder.Services.AddHttpClient<IJamendoService, JamendoService>((serviceProvider, client) =>
+{
+    var jamendoOptions = serviceProvider.GetRequiredService<IOptions<JamendoOptions>>().Value;
+    client.BaseAddress = new Uri(jamendoOptions.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // CORS — the frontend (Cloudflare Pages/localhost) and this API are different origins,
 // so the browser requires the API to opt the frontend origin in. Origins are
